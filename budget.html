@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catat Pengeluaranmu (AI)</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; max-width: 500px; margin: 0 auto; color: #2c3e50; }
+    h1 { font-size: 24px; margin-bottom: 5px; }
+    .subjudul { font-size: 13px; color: #888; margin-bottom: 20px; }
+    
+    /* Kotak Cermin Perilaku */
+    .insight-box {
+      background: linear-gradient(135deg, #eaf4ff, #ffffff);
+      border-left: 5px solid #3498db;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+      box-shadow: 0 2px 10px rgba(52, 152, 219, 0.1);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .insight-title { font-weight: bold; color: #2980b9; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+    
+    /* Daftar Transaksi */
+    ul { padding: 0; }
+    li { background-color: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .item-kiri { display: flex; flex-direction: column; }
+    .item-nama { font-size: 16px; font-weight: bold; color: #2c3e50; }
+    .item-detail { font-size: 12px; color: #888; margin-top: 4px; }
+    .item-jumlah { font-size: 16px; font-weight: bold; color: #27ae60; }
+    .loading { text-align: center; color: #888; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Catat Pengeluaranmu 🤖</h1>
+  <p class="subjudul">Ditenagai oleh Gemini AI & Google Sheets</p>
+  
+  <!-- Kotak Login Sederhana -->
+  <div id="loginBox" style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 14px; margin-top: 0;">Masukkan Kode Unik Telegram Anda:</p>
+    <input type="text" id="inputUserId" placeholder="Contoh: TELEGRAM_6766979234" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+    <button onclick="loginManual()" style="width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Lihat Data</button>
+  </div>
+
+  <div id="insightBox" class="insight-box" style="display: none;">
+    <div class="insight-title">🪞 Cermin Perilaku</div>
+    <div id="insightTeks"></div>
+  </div>
+
+  <div id="loading" class="loading"></div>
+  <ul id="daftarPengeluaran"></ul>
+
+    <script>
+    // GANTI DENGAN URL WEB APP ANDA YANG BERAKHIRAN /exec
+    const API_URL = "https://script.google.com/macros/s/AKfycbxiq5ItXYCKOYYsFXltFZf8mtBjsPeTKASq8cvG-qzfGl_9x9J_d76QwX9_Gl6qrjSO/exec";
+
+    // Fungsi untuk mengambil data berdasarkan userId
+    function ambilDataBerdasarkanId(userId) {
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("loading").textContent = "⏳ Mengambil data...";
+      document.getElementById("daftarPengeluaran").innerHTML = "";
+      document.getElementById("insightBox").style.display = "none";
+      document.getElementById("loginBox").style.display = "none"; // Sembunyikan kotak login
+
+      fetch(API_URL + "?userId=" + encodeURIComponent(userId))
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById("loading").style.display = "none";
+          
+          if (data.transaksi.length === 0) {
+            document.getElementById("loading").textContent = "Tidak ada data untuk kode tersebut.";
+            return;
+          }
+
+          // Tampilkan Insight
+          document.getElementById("insightTeks").innerText = data.insight;
+          document.getElementById("insightBox").style.display = "block";
+
+          // Tampilkan Transaksi
+          const list = document.getElementById("daftarPengeluaran");
+          data.transaksi.reverse().forEach(item => {
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <div class="item-kiri">
+                <div class="item-nama">${item.nama}</div>
+                <div class="item-detail">${item.tanggal} · ${item.kategori}</div>
+              </div>
+              <div class="item-jumlah">Rp ${item.jumlah.toLocaleString('id-ID')}</div>
+            `;
+            list.appendChild(li);
+          });
+        })
+        .catch(error => {
+          document.getElementById("loading").textContent = "❌ Gagal mengambil data.";
+          console.error(error);
+        });
+    }
+
+    // Cek apakah ada ID di URL (misal: ?id=TELEGRAM_123)
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const userIdFromUrl = urlParams.get('id');
+
+      // Cek apakah ada ID tersimpan di memori browser (Bookmark Otomatis)
+      const userIdTersimpan = localStorage.getItem("userIdTersimpan");
+
+      if (userIdFromUrl) {
+        // Jika dari link Bot, simpan ID-nya ke browser
+        localStorage.setItem("userIdTersimpan", userIdFromUrl);
+        ambilDataBerdasarkanId(userIdFromUrl);
+      } else if (userIdTersimpan) {
+        // Jika tidak ada link, tapi pernah simpan, langsung tampilkan
+        ambilDataBerdasarkanId(userIdTersimpan);
+      } else {
+        // Jika belum pernah sama sekali, tampilkan kotak login manual
+        document.getElementById("loginBox").style.display = "block";
+      }
+    };
+
+    // Fungsi untuk tombol login manual (jika tidak lewat link)
+    function loginManual() {
+      const userId = document.getElementById("inputUserId").value.trim();
+      if (!userId) {
+        alert("Kode Unik wajib diisi!");
+        return;
+      }
+      localStorage.setItem("userIdTersimpan", userId);
+      ambilDataBerdasarkanId(userId);
+    }
+  </script>
+</body>
+</html>
